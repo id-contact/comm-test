@@ -1,17 +1,17 @@
-use std::{collections::HashMap, convert::TryFrom, error::Error as StdError, fmt::Display};
+use std::{convert::TryFrom, error::Error as StdError, fmt::Display};
 use serde::Deserialize;
+use id_contact_jwe::{SignKeyConfig, EncryptionKeyConfig};
 
 use josekit::{
-    jwe::{JweDecrypter, ECDH_ES, RSA_OAEP},
-    jws::{JwsVerifier, ES256, RS256},
+    jwe::{JweDecrypter},
+    jws::{JwsVerifier},
 };
 
 #[derive(Debug)]
 pub enum Error {
-    UnknownAttribute(String),
     YamlError(serde_yaml::Error),
     Json(serde_json::Error),
-    JWT(josekit::JoseError),
+    JWT(id_contact_jwe::Error),
 }
 
 impl From<serde_yaml::Error> for Error {
@@ -26,8 +26,8 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<josekit::JoseError> for Error {
-    fn from(e: josekit::JoseError) -> Error {
+impl From<id_contact_jwe::Error> for Error {
+    fn from(e: id_contact_jwe::Error) -> Error {
         Error::JWT(e)
     }
 }
@@ -35,7 +35,6 @@ impl From<josekit::JoseError> for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::UnknownAttribute(a) => f.write_fmt(format_args!("Unknown attribute {}", a)),
             Error::YamlError(e) => e.fmt(f),
             Error::Json(e) => e.fmt(f),
             Error::JWT(e) => e.fmt(f),
@@ -49,44 +48,6 @@ impl StdError for Error {
             Error::YamlError(e) => Some(e),
             Error::Json(e) => Some(e),
             Error::JWT(e) => Some(e),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Deserialize, Debug)]
-struct InnerKeyConfig {
-    key: String,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type")]
-enum EncryptionKeyConfig {
-    RSA(InnerKeyConfig),
-    EC(InnerKeyConfig),
-}
-
-impl EncryptionKeyConfig {
-    fn to_decrypter(&self) -> Result<Box<dyn JweDecrypter>, Error> {
-        match self {
-            EncryptionKeyConfig::RSA(key) => Ok(Box::new(RSA_OAEP.decrypter_from_pem(&key.key)?)),
-            EncryptionKeyConfig::EC(key) => Ok(Box::new(ECDH_ES.decrypter_from_pem(&key.key)?)),
-        }
-    }
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(tag = "type")]
-enum SignKeyConfig {
-    RSA(InnerKeyConfig),
-    EC(InnerKeyConfig),
-}
-
-impl SignKeyConfig {
-    fn to_verifier(&self) -> Result<Box<dyn JwsVerifier>, Error> {
-        match self {
-            SignKeyConfig::RSA(key) => Ok(Box::new(RS256.verifier_from_pem(&key.key)?)),
-            SignKeyConfig::EC(key) => Ok(Box::new(ES256.verifier_from_pem(&key.key)?)),
         }
     }
 }
@@ -110,6 +71,7 @@ pub struct Config {
     validator: Box<dyn JwsVerifier>,
 }
 
+// This tryfrom can be removed once try_from for fields lands in serde
 impl TryFrom<RawConfig> for Config {
     type Error = Error;
     fn try_from(config: RawConfig) -> Result<Config, Error> {
@@ -117,8 +79,8 @@ impl TryFrom<RawConfig> for Config {
             server_url: config.server_url,
             internal_url: config.internal_url,
             use_attr_url: config.use_attr_url,
-            decrypter: config.decryption_privkey.to_decrypter()?,
-            validator: config.signature_pubkey.to_verifier()?,
+            decrypter: Box::<dyn JweDecrypter>::try_from(config.decryption_privkey)?,
+            validator: Box::<dyn JwsVerifier>::try_from(config.signature_pubkey)?,
         })
     }
 }

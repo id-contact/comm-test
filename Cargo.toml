@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+id-contact-jwe = { git = "https://github.com/id-contact/id-contact-jwe.git" }
 rocket = { git = "https://github.com/SergioBenitez/Rocket" }
 rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket" }
 serde = { version = "1.0.123", features = [ "derive" ] }

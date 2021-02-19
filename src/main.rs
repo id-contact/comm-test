@@ -2,8 +2,8 @@ use std::{fmt::Display, fs::File, error::Error as StdError};
 
 use rocket::{get, post, launch, routes, State};
 use rocket_contrib::json::Json;
+use id_contact_jwe::decrypt_and_verify_attributes;
 
-mod jwe;
 mod config;
 mod idcomm;
 
@@ -15,7 +15,7 @@ enum Error {
     Config(config::Error),
     Json(serde_json::Error),
     Utf(std::str::Utf8Error),
-    JWT(jwe::Error),
+    JWT(id_contact_jwe::Error),
 }
 
 impl<'r, 'o: 'r> rocket::response::Responder<'r, 'o> for Error {
@@ -43,8 +43,8 @@ impl From<std::str::Utf8Error> for Error {
     }
 }
 
-impl From<jwe::Error> for Error {
-    fn from(e: jwe::Error) -> Error {
+impl From<id_contact_jwe::Error> for Error {
+    fn from(e: id_contact_jwe::Error) -> Error {
         Error::JWT(e)
     }
 }
@@ -84,7 +84,7 @@ fn ui_withparams(status: String, attributes: Option<String>, session_url: Option
     println!("session_url: {:?}", session_url);
 
     if let Some(attributes) = &attributes {
-        let attributes = jwe::decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
+        let attributes = decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
         println!("Decoded attributes: {:?}", attributes);
     }
     
@@ -95,7 +95,7 @@ fn ui_withparams(status: String, attributes: Option<String>, session_url: Option
 fn attr_url(auth_result: Json<AuthResult>, config: State<Config>) -> Result<(), Error> {
     println!("Received authentication result {:?}", &auth_result);
     if let Some(attributes) = &auth_result.attributes {
-        let attributes = jwe::decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
+        let attributes = decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
         println!("Decoded attributes: {:?}", attributes);
     }
 
@@ -106,7 +106,7 @@ fn attr_url(auth_result: Json<AuthResult>, config: State<Config>) -> Result<(), 
 fn start(request: Json<CommRequest>, config: State<Config>) -> Result<Json<CommResponse>, Error> {
     println!("Received communication request {:?}", request);
     if let Some(attributes) = &request.attributes {
-        let attributes = jwe::decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
+        let attributes = decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
         println!("Decoded attributes: {:?}", attributes);
     }
 

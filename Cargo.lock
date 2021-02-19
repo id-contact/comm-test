@@ -447,12 +447,23 @@ dependencies = [
 name = "id-contact-comm-test"
 version = "0.1.0"
 dependencies = [
+ "id-contact-jwe",
  "josekit",
  "rocket",
  "rocket_contrib",
  "serde",
  "serde_json",
  "serde_yaml",
+]
+
+[[package]]
+name = "id-contact-jwe"
+version = "0.1.0"
+source = "git+https://github.com/id-contact/id-contact-jwe.git#273ec3d825d782f1e096ec515aea1bb876bf4e88"
+dependencies = [
+ "josekit",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
