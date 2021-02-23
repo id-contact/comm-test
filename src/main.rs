@@ -1,13 +1,12 @@
-use std::{fmt::Display, fs::File, error::Error as StdError};
+use std::{error::Error as StdError, fmt::Display, fs::File};
 
-use rocket::{get, post, launch, routes, State};
-use rocket_contrib::json::Json;
 use id_contact_jwe::decrypt_and_verify_attributes;
+use id_contact_proto::{AuthResult, StartCommRequest, StartCommResponse};
+use rocket::{get, launch, post, request::Form, routes, State};
+use rocket_contrib::json::Json;
 
 mod config;
-mod idcomm;
 
-use idcomm::{AuthResult, CommRequest, CommResponse};
 use config::Config;
 
 #[derive(Debug)]
@@ -76,18 +75,22 @@ fn ui() -> &'static str {
     "Communication plugin UI"
 }
 
-#[get("/ui?<status>&<attributes>&<session_url>")]
-fn ui_withparams(status: String, attributes: Option<String>, session_url: Option<String>, config: State<Config>) -> Result<&'static str, Error> {
-    println!("Received inline authentication results");
-    println!("status: {:?}", status);
-    println!("attributes: {:?}", attributes);
-    println!("session_url: {:?}", session_url);
+#[get("/ui?<session_result..>")]
+fn ui_withparams(
+    session_result: Form<AuthResult>,
+    config: State<Config>,
+) -> Result<&'static str, Error> {
+    println!(
+        "Received inline authentication results {:?}",
+        &session_result
+    );
 
-    if let Some(attributes) = &attributes {
-        let attributes = decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
+    if let Some(attributes) = &session_result.attributes {
+        let attributes =
+            decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
         println!("Decoded attributes: {:?}", attributes);
     }
-    
+
     Ok(ui())
 }
 
@@ -95,7 +98,8 @@ fn ui_withparams(status: String, attributes: Option<String>, session_url: Option
 fn attr_url(auth_result: Json<AuthResult>, config: State<Config>) -> Result<(), Error> {
     println!("Received authentication result {:?}", &auth_result);
     if let Some(attributes) = &auth_result.attributes {
-        let attributes = decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
+        let attributes =
+            decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
         println!("Decoded attributes: {:?}", attributes);
     }
 
@@ -103,17 +107,27 @@ fn attr_url(auth_result: Json<AuthResult>, config: State<Config>) -> Result<(), 
 }
 
 #[post("/start_communication", data = "<request>")]
-fn start(request: Json<CommRequest>, config: State<Config>) -> Result<Json<CommResponse>, Error> {
+fn start(
+    request: Json<StartCommRequest>,
+    config: State<Config>,
+) -> Result<Json<StartCommResponse>, Error> {
     println!("Received communication request {:?}", request);
     if let Some(attributes) = &request.attributes {
-        let attributes = decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
+        let attributes =
+            decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
         println!("Decoded attributes: {:?}", attributes);
     }
 
     if config.use_attr_url() && request.attributes == None {
-        Ok(Json(CommResponse{ client_url: format!("{}/ui", config.server_url()), attr_url: Some(format!("{}/auth_result", config.internal_url()))}))
+        Ok(Json(StartCommResponse {
+            client_url: format!("{}/ui", config.server_url()),
+            attr_url: Some(format!("{}/auth_result", config.internal_url())),
+        }))
     } else {
-        Ok(Json(CommResponse{ client_url: format!("{}/ui", config.server_url()), attr_url: None}))
+        Ok(Json(StartCommResponse {
+            client_url: format!("{}/ui", config.server_url()),
+            attr_url: None,
+        }))
     }
 }
 
@@ -122,14 +136,6 @@ fn rocket() -> rocket::Rocket {
     let configfile = File::open(std::env::var("CONFIG").expect("No configuration file specified"))
         .expect("Could not open configuration");
     rocket::ignite()
-        .mount(
-            "/",
-            routes![
-                start,
-                attr_url,
-                ui,
-                ui_withparams,
-            ],
-        )
+        .mount("/", routes![start, attr_url, ui, ui_withparams,])
         .manage(Config::from_reader(&configfile).expect("Could not read configuration"))
 }

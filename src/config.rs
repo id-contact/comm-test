@@ -1,11 +1,8 @@
-use std::{convert::TryFrom, error::Error as StdError, fmt::Display};
+use id_contact_jwe::{EncryptionKeyConfig, SignKeyConfig};
 use serde::Deserialize;
-use id_contact_jwe::{SignKeyConfig, EncryptionKeyConfig};
+use std::{convert::TryFrom, error::Error as StdError, fmt::Display};
 
-use josekit::{
-    jwe::{JweDecrypter},
-    jws::{JwsVerifier},
-};
+use josekit::{jwe::JweDecrypter, jws::JwsVerifier};
 
 #[derive(Debug)]
 pub enum Error {
