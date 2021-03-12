@@ -1,4 +1,4 @@
-use id_contact_jwe::{EncryptionKeyConfig, SignKeyConfig};
+use id_contact_jwt::{EncryptionKeyConfig, SignKeyConfig};
 use serde::Deserialize;
 use std::{convert::TryFrom, error::Error as StdError, fmt::Display};
 
@@ -8,7 +8,7 @@ use josekit::{jwe::JweDecrypter, jws::JwsVerifier};
 pub enum Error {
     YamlError(serde_yaml::Error),
     Json(serde_json::Error),
-    JWT(id_contact_jwe::Error),
+    JWT(id_contact_jwt::Error),
 }
 
 impl From<serde_yaml::Error> for Error {
@@ -23,8 +23,8 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl From<id_contact_jwe::Error> for Error {
-    fn from(e: id_contact_jwe::Error) -> Error {
+impl From<id_contact_jwt::Error> for Error {
+    fn from(e: id_contact_jwt::Error) -> Error {
         Error::JWT(e)
     }
 }

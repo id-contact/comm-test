@@ -1,8 +1,8 @@
 use std::{error::Error as StdError, fmt::Display, fs::File};
 
-use id_contact_jwe::decrypt_and_verify_attributes;
+use id_contact_jwt::decrypt_and_verify_auth_result;
 use id_contact_proto::{AuthResult, StartCommRequest, StartCommResponse};
-use rocket::{get, launch, post, request::Form, routes, State};
+use rocket::{get, launch, post, routes, State};
 use rocket_contrib::json::Json;
 
 mod config;
@@ -14,7 +14,7 @@ enum Error {
     Config(config::Error),
     Json(serde_json::Error),
     Utf(std::str::Utf8Error),
-    JWT(id_contact_jwe::Error),
+    JWT(id_contact_jwt::Error),
 }
 
 impl<'r, 'o: 'r> rocket::response::Responder<'r, 'o> for Error {
@@ -42,8 +42,8 @@ impl From<std::str::Utf8Error> for Error {
     }
 }
 
-impl From<id_contact_jwe::Error> for Error {
-    fn from(e: id_contact_jwe::Error) -> Error {
+impl From<id_contact_jwt::Error> for Error {
+    fn from(e: id_contact_jwt::Error) -> Error {
         Error::JWT(e)
     }
 }
@@ -75,9 +75,9 @@ fn ui() -> &'static str {
     "Communication plugin UI"
 }
 
-#[get("/ui?<session_result..>")]
+#[get("/ui?<session_result>")]
 fn ui_withparams(
-    session_result: Form<AuthResult>,
+    session_result: String,
     config: State<Config>,
 ) -> Result<&'static str, Error> {
     println!(
@@ -85,23 +85,17 @@ fn ui_withparams(
         &session_result
     );
 
-    if let Some(attributes) = &session_result.attributes {
-        let attributes =
-            decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
-        println!("Decoded attributes: {:?}", attributes);
-    }
+    let session_result = decrypt_and_verify_auth_result(&session_result, config.validator(), config.decrypter())?;
+    println!("Decoded: {:?}", session_result);
 
     Ok(ui())
 }
 
 #[post("/auth_result", data = "<auth_result>")]
-fn attr_url(auth_result: Json<AuthResult>, config: State<Config>) -> Result<(), Error> {
+fn attr_url(auth_result: String, config: State<Config>) -> Result<(), Error> {
     println!("Received authentication result {:?}", &auth_result);
-    if let Some(attributes) = &auth_result.attributes {
-        let attributes =
-            decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
-        println!("Decoded attributes: {:?}", attributes);
-    }
+    let auth_result = decrypt_and_verify_auth_result(&auth_result, config.validator(), config.decrypter())?;
+    println!("Decoded: {:?}", auth_result);
 
     Ok(())
 }
@@ -112,13 +106,13 @@ fn start(
     config: State<Config>,
 ) -> Result<Json<StartCommResponse>, Error> {
     println!("Received communication request {:?}", request);
-    if let Some(attributes) = &request.attributes {
-        let attributes =
-            decrypt_and_verify_attributes(attributes, config.validator(), config.decrypter())?;
-        println!("Decoded attributes: {:?}", attributes);
+    if let Some(auth_result) = &request.auth_result {
+        let auth_result =
+            decrypt_and_verify_auth_result(auth_result, config.validator(), config.decrypter())?;
+        println!("Decoded auth_result: {:?}", auth_result);
     }
 
-    if config.use_attr_url() && request.attributes == None {
+    if config.use_attr_url() && request.auth_result == None {
         Ok(Json(StartCommResponse {
             client_url: format!("{}/ui", config.server_url()),
             attr_url: Some(format!("{}/auth_result", config.internal_url())),

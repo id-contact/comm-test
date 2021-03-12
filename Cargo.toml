@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 id-contact-proto = { git = "https://github.com/id-contact/id-contact-proto.git" }
-id-contact-jwe = { git = "https://github.com/id-contact/id-contact-jwe.git" }
+id-contact-jwt = { git = "https://github.com/id-contact/id-contact-jwt.git" }
 rocket = { git = "https://github.com/SergioBenitez/Rocket" }
 rocket_contrib = { git = "https://github.com/SergioBenitez/Rocket" }
 serde = { version = "1.0.123", features = [ "derive" ] }
