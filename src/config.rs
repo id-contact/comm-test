@@ -102,12 +102,4 @@ impl Config {
     pub fn use_attr_url(&self) -> bool {
         self.use_attr_url
     }
-
-    pub fn from_string(config: &str) -> Result<Config, Error> {
-        Ok(serde_yaml::from_str(config)?)
-    }
-
-    pub fn from_reader<T: std::io::Read>(reader: T) -> Result<Config, Error> {
-        Ok(serde_yaml::from_reader(reader)?)
-    }
 }

@@ -1,8 +1,8 @@
-use std::{error::Error as StdError, fmt::Display, fs::File};
+use std::{error::Error as StdError, fmt::Display};
 
 use id_contact_jwt::decrypt_and_verify_auth_result;
-use id_contact_proto::{AuthResult, StartCommRequest, StartCommResponse};
-use rocket::{get, launch, post, routes, State};
+use id_contact_proto::{ StartCommRequest, StartCommResponse};
+use rocket::{fairing::AdHoc, get, launch, post, routes, State};
 use rocket_contrib::json::Json;
 
 mod config;
@@ -127,9 +127,7 @@ fn start(
 
 #[launch]
 fn rocket() -> rocket::Rocket {
-    let configfile = File::open(std::env::var("CONFIG").expect("No configuration file specified"))
-        .expect("Could not open configuration");
     rocket::ignite()
         .mount("/", routes![start, attr_url, ui, ui_withparams,])
-        .manage(Config::from_reader(&configfile).expect("Could not read configuration"))
+        .attach(AdHoc::config::<Config>())
 }
