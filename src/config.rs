@@ -49,10 +49,15 @@ impl StdError for Error {
     }
 }
 
+fn default_as_true() -> bool {
+    true
+}
+
 #[derive(Deserialize, Debug)]
 struct RawConfig {
     server_url: String,
     internal_url: String,
+    #[serde(default = "default_as_true")]
     use_attr_url: bool,
     decryption_privkey: EncryptionKeyConfig,
     signature_pubkey: SignKeyConfig,
