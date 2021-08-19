@@ -1,9 +1,8 @@
 use std::{error::Error as StdError, fmt::Display};
 
 use id_contact_jwt::decrypt_and_verify_auth_result;
-use id_contact_proto::{ StartCommRequest, StartCommResponse};
-use rocket::{fairing::AdHoc, get, launch, post, routes, State};
-use rocket_contrib::json::Json;
+use id_contact_proto::{StartCommRequest, StartCommResponse};
+use rocket::{fairing::AdHoc, get, launch, post, routes, serde::json::Json, State};
 
 mod config;
 
@@ -14,7 +13,7 @@ enum Error {
     Config(config::Error),
     Json(serde_json::Error),
     Utf(std::str::Utf8Error),
-    JWT(id_contact_jwt::Error),
+    Jwt(id_contact_jwt::Error),
 }
 
 impl<'r, 'o: 'r> rocket::response::Responder<'r, 'o> for Error {
@@ -44,7 +43,7 @@ impl From<std::str::Utf8Error> for Error {
 
 impl From<id_contact_jwt::Error> for Error {
     fn from(e: id_contact_jwt::Error) -> Error {
-        Error::JWT(e)
+        Error::Jwt(e)
     }
 }
 
@@ -54,7 +53,7 @@ impl Display for Error {
             Error::Config(e) => e.fmt(f),
             Error::Utf(e) => e.fmt(f),
             Error::Json(e) => e.fmt(f),
-            Error::JWT(e) => e.fmt(f),
+            Error::Jwt(e) => e.fmt(f),
         }
     }
 }
@@ -65,7 +64,7 @@ impl StdError for Error {
             Error::Config(e) => Some(e),
             Error::Utf(e) => Some(e),
             Error::Json(e) => Some(e),
-            Error::JWT(e) => Some(e),
+            Error::Jwt(e) => Some(e),
         }
     }
 }
@@ -76,25 +75,24 @@ fn ui() -> &'static str {
 }
 
 #[get("/ui?<session_result>")]
-fn ui_withparams(
-    session_result: String,
-    config: State<Config>,
-) -> Result<&'static str, Error> {
+fn ui_withparams(session_result: String, config: &State<Config>) -> Result<&'static str, Error> {
     println!(
         "Received inline authentication results {:?}",
         &session_result
     );
 
-    let session_result = decrypt_and_verify_auth_result(&session_result, config.validator(), config.decrypter())?;
+    let session_result =
+        decrypt_and_verify_auth_result(&session_result, config.validator(), config.decrypter())?;
     println!("Decoded: {:?}", session_result);
 
     Ok(ui())
 }
 
 #[post("/auth_result", data = "<auth_result>")]
-fn attr_url(auth_result: String, config: State<Config>) -> Result<(), Error> {
+fn attr_url(auth_result: String, config: &State<Config>) -> Result<(), Error> {
     println!("Received authentication result {:?}", &auth_result);
-    let auth_result = decrypt_and_verify_auth_result(&auth_result, config.validator(), config.decrypter())?;
+    let auth_result =
+        decrypt_and_verify_auth_result(&auth_result, config.validator(), config.decrypter())?;
     println!("Decoded: {:?}", auth_result);
 
     Ok(())
@@ -103,7 +101,7 @@ fn attr_url(auth_result: String, config: State<Config>) -> Result<(), Error> {
 #[post("/start_communication", data = "<request>")]
 fn start(
     request: Json<StartCommRequest>,
-    config: State<Config>,
+    config: &State<Config>,
 ) -> Result<Json<StartCommResponse>, Error> {
     println!("Received communication request {:?}", request);
     if let Some(auth_result) = &request.auth_result {
@@ -126,8 +124,8 @@ fn start(
 }
 
 #[launch]
-fn rocket() -> rocket::Rocket {
-    rocket::ignite()
+fn rocket() -> _ {
+    rocket::build()
         .mount("/", routes![start, attr_url, ui, ui_withparams,])
         .attach(AdHoc::config::<Config>())
 }
