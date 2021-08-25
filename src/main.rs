@@ -2,7 +2,7 @@ use std::{error::Error as StdError, fmt::Display};
 
 use id_contact_jwt::decrypt_and_verify_auth_result;
 use id_contact_proto::{StartCommRequest, StartCommResponse};
-use rocket::{fairing::AdHoc, get, launch, post, routes, serde::json::Json, State};
+use rocket::{get, launch, post, routes, serde::json::Json, State};
 
 mod config;
 
@@ -125,7 +125,11 @@ fn start(
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
-        .mount("/", routes![start, attr_url, ui, ui_withparams,])
-        .attach(AdHoc::config::<Config>())
+    let base = rocket::build().mount("/", routes![start, attr_url, ui, ui_withparams,]);
+    let config = base.figment().extract::<Config>().unwrap_or_else(|_| {
+        // Drop error value, as it could contain secrets
+        panic!("Failure to parse configuration")
+    });
+
+    base.manage(config)
 }
