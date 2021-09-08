@@ -76,10 +76,7 @@ fn ui() -> &'static str {
 
 #[get("/ui?<result>")]
 fn ui_withparams(result: String, config: &State<Config>) -> Result<&'static str, Error> {
-    println!(
-        "Received inline authentication results {:?}",
-        &result
-    );
+    println!("Received inline authentication results {:?}", &result);
 
     let session_result =
         decrypt_and_verify_auth_result(&result, config.validator(), config.decrypter())?;
