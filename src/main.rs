@@ -74,15 +74,12 @@ fn ui() -> &'static str {
     "Communication plugin UI"
 }
 
-#[get("/ui?<session_result>")]
-fn ui_withparams(session_result: String, config: &State<Config>) -> Result<&'static str, Error> {
-    println!(
-        "Received inline authentication results {:?}",
-        &session_result
-    );
+#[get("/ui?<result>")]
+fn ui_withparams(result: String, config: &State<Config>) -> Result<&'static str, Error> {
+    println!("Received inline authentication results {:?}", &result);
 
     let session_result =
-        decrypt_and_verify_auth_result(&session_result, config.validator(), config.decrypter())?;
+        decrypt_and_verify_auth_result(&result, config.validator(), config.decrypter())?;
     println!("Decoded: {:?}", session_result);
 
     Ok(ui())
