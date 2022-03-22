@@ -70,7 +70,7 @@ pub struct Config {
     internal_url: String,
     use_attr_url: bool,
     decrypter: Box<dyn JweDecrypter>,
-    validator: Box<dyn JwsVerifier>,
+    verifier: Box<dyn JwsVerifier>,
 }
 
 // This tryfrom can be removed once try_from for fields lands in serde
@@ -82,7 +82,7 @@ impl TryFrom<RawConfig> for Config {
             internal_url: config.internal_url,
             use_attr_url: config.use_attr_url,
             decrypter: Box::<dyn JweDecrypter>::try_from(config.decryption_privkey)?,
-            validator: Box::<dyn JwsVerifier>::try_from(config.signature_pubkey)?,
+            verifier: Box::<dyn JwsVerifier>::try_from(config.signature_pubkey)?,
         })
     }
 }
@@ -100,8 +100,8 @@ impl Config {
         self.decrypter.as_ref()
     }
 
-    pub fn validator(&self) -> &dyn JwsVerifier {
-        self.validator.as_ref()
+    pub fn verifier(&self) -> &dyn JwsVerifier {
+        self.verifier.as_ref()
     }
 
     pub fn use_attr_url(&self) -> bool {

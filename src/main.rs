@@ -79,7 +79,7 @@ fn ui_withparams(result: String, config: &State<Config>) -> Result<&'static str,
     println!("Received inline authentication results {:?}", &result);
 
     let session_result =
-        decrypt_and_verify_auth_result(&result, config.validator(), config.decrypter())?;
+        decrypt_and_verify_auth_result(&result, config.verifier(), config.decrypter())?;
     println!("Decoded: {:?}", session_result);
 
     Ok(ui())
@@ -89,7 +89,7 @@ fn ui_withparams(result: String, config: &State<Config>) -> Result<&'static str,
 fn attr_url(auth_result: String, config: &State<Config>) -> Result<(), Error> {
     println!("Received authentication result {:?}", &auth_result);
     let auth_result =
-        decrypt_and_verify_auth_result(&auth_result, config.validator(), config.decrypter())?;
+        decrypt_and_verify_auth_result(&auth_result, config.verifier(), config.decrypter())?;
     println!("Decoded: {:?}", auth_result);
 
     Ok(())
@@ -103,7 +103,7 @@ fn start(
     println!("Received communication request {:?}", request);
     if let Some(auth_result) = &request.auth_result {
         let auth_result =
-            decrypt_and_verify_auth_result(auth_result, config.validator(), config.decrypter())?;
+            decrypt_and_verify_auth_result(auth_result, config.verifier(), config.decrypter())?;
         println!("Decoded auth_result: {:?}", auth_result);
     }
 
